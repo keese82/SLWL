@@ -1,0 +1,95 @@
+---
+title: "NHANES Data Import"
+author: "Marquis hawkins"
+date: "2021-02-04"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+## Introduction
+This code will import NHANES raw data files, that are stored in the "data" 
+folder, and select key variables to create the analytic dataset
+
+# 1. Get Setup
+## 1.1. Clear everything & set width
+
+Programming Notes
+1. Write vertically NOT horizontally, your code should not run off the screen,
+   a good guide is to keep your column length </= 80 columns
+2. You can remove everything from your or console to start with a black slate, 
+   strictly a personal preference, remove the cat("\014) if you don't mind
+
+```{r echo=TRUE, results='hide', message=FALSE}
+    options(width=80) #Set width
+    rm(list=ls())     #Remove everything from environment
+    cat("\014")       #Clear Console
+```
+
+## 1.2. Loading necessary packages
+
+Programming Notes:
+1. Documenting your steps makes your code shareable
+2. Install the packages listed below if it is your first time using them on 
+   this computer. Example. install.packages("haven")
+
+```{r echo=TRUE, results='hide', message=FALSE}
+library(knitr)      #allows rmarkdown files
+library(haven)      #helps import stata
+library(foreign)    #for importing STATA files
+library(magrittr)   #to use piping
+library(dplyr)      #data manipulation (e.g., renaming,subsetting)
+```
+
+# 2. Subsetting datasets and variables from NHANES
+## 2.1 Importing datasets and selecting key variables
+
+Programming Notes:
+1. Use spacing and indentation to make the code readable
+2. Use a consistent naming convention for variables you use repeatedly, rename
+   variable if necessary, makes reusing code easier
+
+```{r}
+demo <- read_xpt("./data/XPT_Files/DEMO_J.xpt") %>%
+        select(SEQN, RIDSTATR, RIAGENDR, RIDAGEYR, RIDRETH1, 
+               WTMEC2YR, SDMVPSU, SDMVSTRA) %>%
+        rename(gender = RIAGENDR,
+               age = RIDAGEYR)
+
+mcq <- read_xpt("./data/XPT_Files//MCQ_J.xpt") %>%
+       select(SEQN, MCQ366A) %>%
+       rename(losewt = MCQ366A)
+
+slq <- read_xpt("./data/XPT_Files//SLQ_J.xpt") %>%
+       select(SEQN, SLD012, SLD013, SLQ030, SLQ040, SLQ050, SLQ120) %>%
+       rename(sld_wk = SLD012, 
+              sld_we = SLD013,
+              snore = SLQ030,
+              sl_prob = SLQ050,
+              sleepy = SLQ120)
+```
+
+## 2.2. Checking imports
+
+Programming Notes
+1. Check the variable type, sometimes numerical variables are imported as
+   character
+   
+```{r}
+str(demo)
+str(mcq)
+str(slq)
+```
+
+## 2.3. Merging datasets
+
+```{r}
+NH_Data <- merge(demo, mcq, by = "SEQN", all = TRUE)
+NH_Data <- merge(NH_Data, slq, by = "SEQN", all = TRUE)
+```
+
+## 3. Saving dataset
+
+```{r}
+save(NH_Data, file = "./output/NH_Data.RData")
+```
